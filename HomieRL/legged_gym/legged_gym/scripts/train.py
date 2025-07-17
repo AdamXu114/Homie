@@ -43,7 +43,7 @@ def train(args, headless=False):
     # args.resume = True
 
     # 修改2000为20
-    global_switch.pretrained_to_hybrid_start = 2000 if args.resume else 0000  # 2000 with pretrained, 10000 from scratch
+    global_switch.pretrained_to_hybrid_start = 2000 if args.resume else 10000  # 2000 with pretrained, 10000 from scratch
     global_switch.pretrained_to_hybrid_end = global_switch.pretrained_to_hybrid_start + 0
     env, env_cfg = task_registry.make_env(name=args.task, args=args)
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args)

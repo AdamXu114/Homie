@@ -101,28 +101,37 @@ def parse_sim_params(args, cfg):
 
     return sim_params
 
-def get_load_path(root, load_run=-1, checkpoint=-1):
+
+def get_load_path(root, load_run=-1, checkpoint=-1, model_type="leg"):
     try:
         runs = os.listdir(root)
-        #TODO sort by date to handle change of month
+        # TODO sort by date to handle change of month
         runs.sort()
-        if 'exported' in runs: runs.remove('exported')
+        if 'exported' in runs:
+            runs.remove('exported')
         last_run = os.path.join(root, runs[-1])
     except:
         raise ValueError("No runs in this directory: " + root)
-    if load_run==-1:
+
+    if load_run == -1:
         load_run = last_run
     else:
         load_run = os.path.join(root, load_run)
 
-    if checkpoint==-1:
-        models = [file for file in os.listdir(load_run) if 'model' in file]
+    # Handle the new folder structure
+    model_dir = os.path.join(load_run, model_type)  # arm or leg
+    if not os.path.exists(model_dir):
+        # Fallback to old structure if new structure not found
+        model_dir = load_run
+
+    if checkpoint == -1:
+        models = [file for file in os.listdir(model_dir) if 'model' in file]
         models.sort(key=lambda m: '{0:0>15}'.format(m))
         model = models[-1]
     else:
-        model = "model_{}.pt".format(checkpoint) 
+        model = "model_{}.pt".format(checkpoint)
 
-    load_path = os.path.join(load_run, model)
+    load_path = os.path.join(model_dir, model)
     return load_path
 
 def update_cfg_from_args(env_cfg, cfg_train, args):

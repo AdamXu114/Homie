@@ -1728,8 +1728,8 @@ class LeggedRobot(BaseTask):
         out_of_limits += (self.plan_actions[:, 0] - self.cfg.hybrid.rewards.limit_body_pitch[1]).clip(min=0.)
         out_of_limits += -(self.plan_actions[:, 1] - self.cfg.hybrid.rewards.limit_body_roll[0]).clip(max=0.)  # lower limit
         out_of_limits += (self.plan_actions[:, 1] - self.cfg.hybrid.rewards.limit_body_roll[1]).clip(min=0.)
-        out_of_limits += -(self.plan_actions[:, 1] - self.cfg.hybrid.rewards.limit_body_yaw[0]).clip(max=0.)  # lower limit
-        out_of_limits += (self.plan_actions[:, 1] - self.cfg.hybrid.rewards.limit_body_yaw[1]).clip(min=0.)
+        out_of_limits += -(self.plan_actions[:, 2] - self.cfg.hybrid.rewards.limit_body_yaw[0]).clip(max=0.)  # lower limit
+        out_of_limits += (self.plan_actions[:, 2] - self.cfg.hybrid.rewards.limit_body_yaw[1]).clip(min=0.)
         return out_of_limits
 
     def _reward_arm_control_smoothness(self): #26
@@ -1797,3 +1797,15 @@ class LeggedRobot(BaseTask):
         diff = diff * (self.last_last_actions[:, self.num_lower_dof + 1:] != 0)  # ignore second step
         return torch.sum(diff, dim=1)
 
+
+    def _reward_orientation_tracking(self):
+        # base rpy
+        base_rpy = torch.cat([self.roll, self.pitch, self.yaw], dim=1)  # [num_envs, 3]
+        # 目标 rpy
+        target_rpy = self.rpy_commands[:, 0:3]  # [num_envs, 3]
+        # 误差
+        angle_error = base_rpy - target_rpy
+        # 奖励：误差越小奖励越高
+        reward = torch.exp(
+            -torch.sum(torch.square(angle_error), dim=1) / self.cfg.hybrid.rewards.orientation_tracking_sigma)
+        return reward

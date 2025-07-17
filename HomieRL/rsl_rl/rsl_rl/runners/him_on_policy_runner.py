@@ -180,7 +180,7 @@ class HIMOnPolicyRunner:
                                                     obs_history_arm[:num_envs])
                         self.env.plan(actions_arm[..., -self.env.num_plan_actions:])
                     #修改
-                    if it == 0:
+                    if it == start_iter:
                         obs = self.env.get_observations()
                         privileged_obs = self.env.get_privileged_observations()
                         critic_obs = privileged_obs if privileged_obs is not None else obs
@@ -248,7 +248,8 @@ class HIMOnPolicyRunner:
             if self.log_dir is not None:
                 self.log(locals())
             if it % self.save_interval == 0:
-                self.save(os.path.join(self.log_dir, 'model_{}.pt'.format(it)))
+                self.save(os.path.join(self.log_dir, 'leg/model_{}.pt'.format(it)))
+                self.save_arm(os.path.join(self.log_dir, 'arm/model_{}.pt'.format(it)))
             ep_infos.clear()
             self.current_learning_iteration = it
 
@@ -264,7 +265,8 @@ class HIMOnPolicyRunner:
                 for key, value in change_setting.items():
                     setattr(self.env.cfg.rewards, key, value)
 
-        self.save(os.path.join(self.log_dir, 'model_{}.pt'.format(self.current_learning_iteration)))
+        self.save(os.path.join(self.log_dir, 'leg/model_{}.pt'.format(self.current_learning_iteration)))
+        self.save_arm(os.path.join(self.log_dir, 'arm/model_{}.pt'.format(self.current_learning_iteration)))
 
     def log(self, locs, width=80, pad=35):
         self.tot_timesteps += self.num_steps_per_env * self.env.num_envs
@@ -349,6 +351,7 @@ class HIMOnPolicyRunner:
         print(log_string)
 
     def save(self, path, infos=None):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         torch.save({
             'model_state_dict': self.alg.actor_critic.state_dict(),
             'optimizer_state_dict': self.alg.optimizer.state_dict(),
@@ -357,14 +360,20 @@ class HIMOnPolicyRunner:
             'infos': infos,
             }, path)
 
-    def save_arm(self, path, infos=None):
-        torch.save({
-            'model_state_dict': self.arm_alg.actor_critic.state_dict(),
-            'optimizer_state_dict': self.arm_alg.optimizer.state_dict(),
-            'estimator_optimizer_state_dict': self.arm_alg.actor_critic.estimator.optimizer.state_dict(),
-            'iter': self.current_learning_iteration + 1,
-            'infos': infos,
+
+    def save_arm(self, path: str, infos=None):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            torch.save({
+                'model_state_dict': self.arm_alg.actor_critic.state_dict(),
+                'optimizer_state_dict': self.arm_alg.optimizer.state_dict(),
+                'iter': self.current_learning_iteration + 1,
+                'infos': infos,
             }, path)
+            print(f"ArmActorCritic 模型已保存到 {path}")
+        except Exception as e:
+            print(f"保存 ArmActorCritic 失败: {e}")
+
     def load(self, path, load_optimizer=True):
         loaded_dict = torch.load(path, map_location=self.device)
         self.alg.actor_critic.load_state_dict(loaded_dict['model_state_dict'])
@@ -373,6 +382,19 @@ class HIMOnPolicyRunner:
             self.alg.actor_critic.estimator.optimizer.load_state_dict(loaded_dict['estimator_optimizer_state_dict'])
         self.current_learning_iteration = loaded_dict['iter']
         return loaded_dict['infos']
+
+
+    def load_arm(self, path, load_optimizer=True):
+        try:
+            loaded_dict = torch.load(path, map_location=self.device)
+            self.arm_alg.actor_critic.load_state_dict(loaded_dict['model_state_dict'])
+            if load_optimizer:
+                self.arm_alg.optimizer.load_state_dict(loaded_dict['optimizer_state_dict'])
+            self.current_learning_iteration = loaded_dict['iter']
+            return loaded_dict.get('infos', None)
+        except Exception as e:
+            print(f"加载 ArmActorCritic 失败: {e}")
+            return None
 
     def get_inference_policy(self, device=None):
         self.alg.actor_critic.eval() # switch to evaluation mode (dropout for example)

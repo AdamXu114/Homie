@@ -55,8 +55,9 @@ class G1RoughCfg(LeggedRobotCfg):
             limit_body_roll = [-0.4, 0.4]
             limit_body_pitch = [-0.4, 0.4]
             limit_body_yaw = [-0.4, 0.4]
+            orientation_tracking_sigma = 1.0
 
-        # TODO
+            # TODO
         class reward_scales:
             # hip_joint_penality = -0.
             arm_control_limits = -5.
@@ -72,6 +73,7 @@ class G1RoughCfg(LeggedRobotCfg):
             arm_manip_commands_tracking_combine = 1.
             vis_manip_commands_tracking_lpy = 0.
             vis_manip_commands_tracking_rpy = 0.
+            orientation_tracking = 0.005
             # orientation_heuristic = -2.0
             # orientation_control = -10.
             # penalize_yaw = -0.5
