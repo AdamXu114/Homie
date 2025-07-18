@@ -127,6 +127,9 @@ class LeggedRobot(BaseTask):
             This function is called by the algorithm to get actions for the robot.
         """
 
+        self.last_commands_height = self.commands[:,4]
+        if not global_switch.switch_open:
+            return
         self.commands[:,4] = plan_actions[...,3]# height
         self.rpy_commands[:,0:3] = plan_actions[...,0:3]  # roll, pitch, yaw
         self.plan_actions[:] = plan_actions
@@ -150,7 +153,9 @@ class LeggedRobot(BaseTask):
             self.random_upper_actions = ((self.action_min[:, self.num_lower_dof:] * (rand_pos >= 0)) + (self.action_max[:, self.num_lower_dof:] * (rand_pos < 0) ))* self.random_joint_ratio
             self.delta_upper_actions = (self.random_upper_actions - self.current_upper_actions) / (self.cfg.domain_rand.upper_interval)
         self.current_upper_actions += self.delta_upper_actions
-        actions = torch.cat((actions, self.current_upper_actions), dim=-1)
+        #actions = torch.cat((actions, self.current_upper_actions), dim=-1)
+        #测试寻找采样值
+        actions = torch.cat((actions,torch.zeros_like(self.current_upper_actions)),dim = -1)
         # TODO
         if global_switch.switch_open:
             #训练上肢策略时使用输入上肢动作
@@ -180,6 +185,18 @@ class LeggedRobot(BaseTask):
             self.gym.refresh_dof_state_tensor(self.sim)
 
         termination_ids, termination_priveleged_obs = self.post_physics_step()
+        # lpy = self.get_lpy_in_base_coord(torch.arange(self.num_envs, device=self.device), effector='left_hand')
+        # print("left hand:", lpy)
+        # lpy2 = self.get_lpy_in_base_coord(torch.arange(self.num_envs, device=self.device), effector='right_hand')
+        # print("right hand:", lpy2)
+        # lpy3 = self.get_lpy_in_base_coord(torch.arange(self.num_envs, device=self.device), effector='head')
+        # print("head:", lpy3)
+        # rpy = self.get_alpha_beta_gamma_in_base_coord(torch.arange(self.num_envs, device=self.device),effector='left_hand')
+        # rpy2 = self.get_alpha_beta_gamma_in_base_coord(torch.arange(self.num_envs, device=self.device),effector='right_hand')
+        # rpy3 = self.get_alpha_beta_gamma_in_base_coord(torch.arange(self.num_envs, device=self.device), effector='head')
+        # print("left hand:", rpy)
+        # print("right hand:", rpy2)
+        # print("head:", rpy3)
 
         # return clipped obs, clipped states (None), rewards, dones and infos
         clip_obs = self.cfg.normalization.clip_observations
@@ -351,12 +368,14 @@ class LeggedRobot(BaseTask):
         """
 
         reward_scales = global_switch.get_reward_scales()
+        #if global_switch.switch_open:
+            # print("compute reward, switch open")
+            # print("reward scales:", reward_scales)
+            # input("press enter to continue")
         self.rew_buf[:] = 0.
         self.rew_buf_arm[:] = 0.
         # print("reward names:",self.reward_names)
-        # print("reward scales:",reward_scales)
         # print("reward functions:",self.reward_functions)
-        # input("press enter to continue")
         for i in range(len(reward_scales)):
             name = self.reward_names[i]
             rew = self.reward_functions[i]() * self.reward_scales[name]
@@ -365,6 +384,9 @@ class LeggedRobot(BaseTask):
                 import ipdb; ipdb.set_trace()
             self.rew_buf += rew
             self.episode_sums[name] += rew
+            if name in self.reward_arm_only:
+                self.rew_buf_arm += rew
+
         if self.cfg.rewards.only_positive_rewards:
             self.rew_buf[:] = torch.clip(self.rew_buf[:], min=0.)
         # add termination reward after clipping
@@ -638,7 +660,7 @@ class LeggedRobot(BaseTask):
         # 采样右手位置
         self.commands_arm[env_ids, 6] = torch_rand_float(self.cfg.arm.arm_commands.l[0], self.cfg.arm.arm_commands.l[1],
                                                          (env_ids.shape[0], 1), device=self.device).squeeze()
-        self.commands_arm[env_ids, 7] = torch_rand_float(self.cfg.arm.arm_commands.p[0], self.cfg.arm.arm_commands.p[1],
+        self.commands_arm[env_ids, 7] = - torch_rand_float(self.cfg.arm.arm_commands.p[0], self.cfg.arm.arm_commands.p[1],
                                                          (env_ids.shape[0], 1), device=self.device).squeeze()
         self.commands_arm[env_ids, 8] = torch_rand_float(self.cfg.arm.arm_commands.y[0], self.cfg.arm.arm_commands.y[1],
                                                          (env_ids.shape[0], 1), device=self.device).squeeze()
@@ -665,12 +687,12 @@ class LeggedRobot(BaseTask):
                                       (env_ids.shape[0], 1), device=self.device).squeeze()
         yaw_left = torch_rand_float(self.cfg.arm.arm_commands.yaw_ee[0], self.cfg.arm.arm_commands.yaw_ee[1],
                                     (env_ids.shape[0], 1), device=self.device).squeeze()
-        # 右手姿态
-        roll_right = torch_rand_float(self.cfg.arm.arm_commands.roll_ee[0], self.cfg.arm.arm_commands.roll_ee[1],
+        # 右手姿态，左右镜像时pitch范围不变
+        roll_right = -torch_rand_float(self.cfg.arm.arm_commands.roll_ee[0], self.cfg.arm.arm_commands.roll_ee[1],
                                       (env_ids.shape[0], 1), device=self.device).squeeze()
         pitch_right = torch_rand_float(self.cfg.arm.arm_commands.pitch_ee[0], self.cfg.arm.arm_commands.pitch_ee[1],
                                        (env_ids.shape[0], 1), device=self.device).squeeze()
-        yaw_right = torch_rand_float(self.cfg.arm.arm_commands.yaw_ee[0], self.cfg.arm.arm_commands.yaw_ee[1],
+        yaw_right = -torch_rand_float(self.cfg.arm.arm_commands.yaw_ee[0], self.cfg.arm.arm_commands.yaw_ee[1],
                                      (env_ids.shape[0], 1), device=self.device).squeeze()
         # 头部姿态
         roll_head = torch_rand_float(self.cfg.arm.head_commands.roll_ee[0], self.cfg.arm.head_commands.roll_ee[1],
@@ -1014,6 +1036,7 @@ class LeggedRobot(BaseTask):
         self.last_plan_actions = torch.zeros(self.num_envs, self.num_plan_actions, dtype=torch.float,
                                              device=self.device, requires_grad=False)
         self.rpy_commands = torch.zeros((self.num_envs, 3), device=self.device, dtype=torch.float) # rpy commands for the arm end effector
+        self.last_commands_height = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         #TODO reward buf
         self.rew_buf_arm = torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
         self.last_joint_pos_target = torch.zeros(self.num_envs, self.num_dof, dtype=torch.float, device=self.device,
@@ -1082,6 +1105,7 @@ class LeggedRobot(BaseTask):
         # prepare list of functions
         self.reward_functions = []
         self.reward_names = []
+        self.reward_arm_only = []
         for name, scale in self.hybrid_reward_scales.items():
             if name=="termination":
                 continue
@@ -1089,6 +1113,7 @@ class LeggedRobot(BaseTask):
             self.reward_functions.append(getattr(self, '_reward_' + name))
             if name not in self.reward_scales:
                 self.reward_scales[name] = 0.
+                self.reward_arm_only.append(name)
 
         # reward episode sums
         self.episode_sums = {name: torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False)
@@ -1809,3 +1834,19 @@ class LeggedRobot(BaseTask):
         reward = torch.exp(
             -torch.sum(torch.square(angle_error), dim=1) / self.cfg.hybrid.rewards.orientation_tracking_sigma)
         return reward
+
+    def _reward_height_command_limits(self):
+        # Penalize height command limits
+        height_command = self.commands[:, 4]
+        height_command_min = self.cfg.hybrid.rewards.height_command_limits[0]
+        height_command_max = self.cfg.hybrid.rewards.height_command_limits[1]
+        out_of_limits = (-(height_command - height_command_min).clip(max=0.)
+                         + (height_command - height_command_max).clip(min=0.))
+        return torch.exp(out_of_limits)
+
+    def _reward_height_command_smoothness(self):
+        # Penalize changes in height command
+        height_command = self.commands[:, 4]
+        last_height_command = self.last_commands_height
+        diff = torch.square(height_command - last_height_command)
+        return torch.exp(diff)

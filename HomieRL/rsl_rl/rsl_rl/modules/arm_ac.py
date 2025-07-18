@@ -15,6 +15,19 @@ class ArmAC_Args(PrefixProto, cli=False):
 
     use_decoder = False
 
+class ArmActorInference(nn.Module):
+    def __init__(self, adaptation_module, actor_history_encoder, actor_body):
+        super().__init__()
+        self.adaptation_module = adaptation_module
+        self.actor_history_encoder = actor_history_encoder
+        self.actor_body = actor_body
+
+    def forward(self, observation_history):
+        obs = observation_history[..., -self.adaptation_module[0].in_features:]
+        latent = self.adaptation_module(observation_history)
+        his_latent = self.actor_history_encoder(observation_history[..., :-obs.shape[-1]])
+        actions_mean = self.actor_body(torch.cat((obs, latent, his_latent), dim=-1))
+        return actions_mean
 
 class ArmActorCritic(nn.Module):
     is_recurrent = False
@@ -63,6 +76,7 @@ class ArmActorCritic(nn.Module):
 
         # Policy
         actor_layers = []
+        print("actor input dim:",self.num_obs + self.num_privileged_obs + ArmAC_Args.actor_hidden_dims[2])
         actor_layers.append(nn.Linear(self.num_obs + self.num_privileged_obs + ArmAC_Args.actor_hidden_dims[2], ArmAC_Args.actor_hidden_dims[0]))
         actor_layers.append(activation)
         for l in range(len(ArmAC_Args.actor_hidden_dims)):
@@ -98,6 +112,13 @@ class ArmActorCritic(nn.Module):
         print(f"Arm Adaptation Module: {self.adaptation_module}")
         print(f"Arm Actor MLP: {self.actor_body}")
         print(f"Arm Critic MLP: {self.critic_body}")
+
+        # 构建 inference_model
+        self.inference_model = ArmActorInference(
+            adaptation_module=self.adaptation_module,
+            actor_history_encoder=self.actor_history_encoder,
+            actor_body=self.actor_body
+        )
 
         # Action noise
         self.std = nn.Parameter(ArmAC_Args.init_noise_std * torch.ones(num_actions))
@@ -160,7 +181,8 @@ class ArmActorCritic(nn.Module):
     def act_student(self, observation_history, policy_info={}):
         obs = observation_history[..., -self.num_obs:]
         latent = self.adaptation_module(observation_history)
-        actions_mean = self.actor_body(torch.cat((obs, latent), dim=-1))
+        his_latent = self.actor_history_encoder(observation_history[..., :-self.num_obs])
+        actions_mean = self.actor_body(torch.cat((obs, latent, his_latent), dim=-1))
         policy_info["latents"] = latent.detach().cpu().numpy()
         return actions_mean
 

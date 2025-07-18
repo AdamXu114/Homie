@@ -35,10 +35,11 @@ import onnxruntime as ort
 
 import isaacgym
 from legged_gym.envs import *
-from legged_gym.utils import  get_args, export_policy_as_jit, task_registry, Logger
+from legged_gym.utils import  get_args, export_policy_as_jit,export_arm_policy_as_jit, task_registry, Logger
 
 import numpy as np
 import torch
+from rsl_rl.utils.global_switch import global_switch
 
 
 def load_policy():
@@ -83,31 +84,40 @@ def play(args, x_vel=0.0, y_vel=0.0, yaw_vel=0.0, height=0.74):
     env.commands[:, 4] = height
     env.action_curriculum_ratio = 1.0
     obs = env.get_observations()
+    arm_obs_dict = env.get_arm_observations()
+
     # load policy
     train_cfg.runner.resume = True
     ppo_runner, train_cfg = task_registry.make_alg_runner(env=env, name=args.task, args=args, train_cfg=train_cfg)
-    policy = ppo_runner.get_inference_policy(device=env.device) # Use this to load from trained pt file
+    policy, arm_policy = ppo_runner.get_inference_policy(device=env.device) # Use this to load from trained pt file
     
     # policy = load_onnx_policy() # Use this to load from exported onnx file
     
     if EXPORT_POLICY:
         path = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies')
         export_policy_as_jit(ppo_runner.alg.actor_critic, path)
+        export_arm_policy_as_jit(ppo_runner.arm_alg.actor_critic, path)
         print('Exported policy as jit script to: ', path)
+
     print(policy)
+    print(arm_policy)
     camera_position = np.array(env_cfg.viewer.pos, dtype=np.float64)
     camera_vel = np.array([1., 1., 0.])
     camera_direction = np.array(env_cfg.viewer.lookat) - np.array(env_cfg.viewer.pos)
     env.reset_idx(torch.arange(env.num_envs).to("cuda:0"))
     for _ in range(10*int(env.max_episode_length)):
+        actions_arm = arm_policy(arm_obs_dict)
+        env.plan(actions_arm[..., -env.num_plan_actions:].detach())
         env.action_curriculum_ratio = 1.0
+        if _ == 0 :
+            obs = env.get_observations()
         actions = policy(obs.detach())
         #print('actions',actions)
         env.commands[:, 0] = x_vel
         env.commands[:, 1] = y_vel
         env.commands[:, 2] = yaw_vel
         env.commands[:, 4] = height
-        obs, _, _, _, _, _, _ = env.step(actions.detach())
+        obs, _, _, _, _, _, _, _ = env.step(torch.cat((actions,actions_arm[..., :-env.num_plan_actions]), dim=-1).detach())
         if MOVE_CAMERA:
             camera_position += camera_vel * env.dt
             env.set_camera(camera_position, camera_position + camera_direction)
@@ -117,4 +127,5 @@ if __name__ == '__main__':
     RECORD_FRAMES = False
     MOVE_CAMERA = False
     args = get_args()
-    play(args, x_vel=0.5, y_vel=0., yaw_vel=0., height=0.68)
+    global_switch.close_switch()
+    play(args, x_vel=0., y_vel=0., yaw_vel=0., height=0.64)

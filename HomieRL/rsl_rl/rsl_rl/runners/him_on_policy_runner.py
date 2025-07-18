@@ -169,6 +169,7 @@ class HIMOnPolicyRunner:
         tot_iter = start_iter + num_learning_iterations
         actions_arm = torch.zeros(self.env.num_envs, self.env.num_actions_arm, dtype=torch.float, device=self.device,
                                   requires_grad=False)
+        global_switch.count = start_iter
         for it in range(start_iter, tot_iter):
             start = time.time()
             # Rollout
@@ -254,6 +255,7 @@ class HIMOnPolicyRunner:
             self.current_learning_iteration = it
 
             global_switch.count += 1
+            #if self.env.action_curriculum_ratio == 1.0 :
             if it == global_switch.pretrained_to_hybrid_start:
                 blue_bold_text = '\033[1;34m'  # bold blue
                 reset_color = '\033[0m'  # reset
@@ -398,18 +400,22 @@ class HIMOnPolicyRunner:
 
     def get_inference_policy(self, device=None):
         self.alg.actor_critic.eval() # switch to evaluation mode (dropout for example)
+        self.arm_alg.actor_critic.eval() # switch to evaluation mode (dropout for example)
         if device is not None:
             self.alg.actor_critic.to(device)
-        return self.alg.actor_critic.act_inference
+            self.arm_alg.actor_critic.to(device)
+        return self.alg.actor_critic.act_inference, self.arm_alg.actor_critic.act_inference
     
     def train_mode(self):
         self.alg.actor_critic.train()
+        self.arm_alg.actor_critic.train()
         if self.empirical_normalization:
             self.obs_normalizer.train()
             self.critic_obs_normalizer.train()
 
     def eval_mode(self):
         self.alg.actor_critic.eval()
+        self.arm_alg.actor_critic.eval()
         if self.empirical_normalization:
             self.obs_normalizer.eval()
             self.critic_obs_normalizer.eval()

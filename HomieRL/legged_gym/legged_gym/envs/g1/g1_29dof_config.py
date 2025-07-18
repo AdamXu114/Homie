@@ -41,7 +41,7 @@ class G1RoughCfg(LeggedRobotCfg):
 
         # TODO
         class rewards:
-            terminal_body_height = 0.28
+            terminal_body_height = 0.75
             use_terminal_body_height = True
             use_terminal_roll = False
             use_terminal_pitch = True
@@ -52,11 +52,11 @@ class G1RoughCfg(LeggedRobotCfg):
             headupdown_thres = 0.1
             manip_weight_lpy = 3
             manip_weight_rpy = 1
-            limit_body_roll = [-0.4, 0.4]
-            limit_body_pitch = [-0.4, 0.4]
-            limit_body_yaw = [-0.4, 0.4]
+            limit_body_roll = [-0.04, 0.04]
+            limit_body_pitch = [-0.04, 0.04]
+            limit_body_yaw = [-0.04, 0.04]
             orientation_tracking_sigma = 1.0
-
+            height_command_limits = [0.65, 0.75]
             # TODO
         class reward_scales:
             # hip_joint_penality = -0.
@@ -73,7 +73,9 @@ class G1RoughCfg(LeggedRobotCfg):
             arm_manip_commands_tracking_combine = 1.
             vis_manip_commands_tracking_lpy = 0.
             vis_manip_commands_tracking_rpy = 0.
-            orientation_tracking = 0.005
+            orientation_tracking = -0.005
+            height_command_limits = -0.5
+            height_command_smoothness = -0.25
             # orientation_heuristic = -2.0
             # orientation_control = -10.
             # penalize_yaw = -0.5
@@ -98,12 +100,12 @@ class G1RoughCfg(LeggedRobotCfg):
             angle75 = np.deg2rad(75)
             angle60 = np.deg2rad(60)
             # TODO 待修改
-            l = [0.3, 0.77]
-            p = [-np.pi * 0.45, np.pi * 0.45]
-            y = [-np.pi / 2, np.pi / 2]
-            roll_ee = [-np.pi * 0.45, np.pi * 0.45]
-            pitch_ee = [-angle60, angle60]
-            yaw_ee = [-angle75, angle75]
+            l = [0.37, 0.39]        #default 0.38
+            p = [0.21, 0.23]       #经度default0.22
+            y = [0.41, 0.43]             #维度default0.42
+            roll_ee = [-0.01, 0.01]
+            pitch_ee = [-0.01, 0.01]
+            yaw_ee = [-0.01, 0.01]
             T_traj = [2, 3.]
             T_force_range = [1, 4.]
             add_force_thres = 0.3
@@ -112,12 +114,12 @@ class G1RoughCfg(LeggedRobotCfg):
             angle75 = np.deg2rad(75)
             angle60 = np.deg2rad(60)
             # TODO 待修改
-            l = [0.3, 0.77]
-            p = [-np.pi * 0.45, np.pi * 0.45]
-            y = [-np.pi / 2, np.pi / 2]
-            roll_ee = [-np.pi * 0.45, np.pi * 0.45]
-            pitch_ee = [-angle60, angle60]
-            yaw_ee = [-angle75, angle75]
+            l = [0.3, 0.77]         #default 0.1
+            p = [-0.01, 0.01]   #default 0？？？？
+            y = [-0.01, 0.01]        #default 0？？？？
+            roll_ee = [-0.01, 0.01]
+            pitch_ee = [-0.01, 0.01]
+            yaw_ee = [-0.01, 0.01]
             T_traj = [2, 3.]
             T_force_range = [1, 4.]
             add_force_thres = 0.3
@@ -452,11 +454,11 @@ class G1RoughCfgPPO( LeggedRobotCfgPPO ):
         num_steps_per_env = 50
         max_iterations = 10000
         run_name = ''
-        experiment_name = ''
-        wandb_project = ""
+        experiment_name = 'test'
+        wandb_project = "MyHomie"
         logger = "wandb"
         # logger = "tensorboard"
-        wandb_user = "" # enter your own wandb user name here
+        wandb_user = "xu147266" # enter your own wandb user name here
 
 # load and resume
         resume = False

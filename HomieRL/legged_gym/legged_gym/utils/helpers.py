@@ -201,6 +201,18 @@ def export_policy_as_jit(actor_critic, path):
         traced_script_module = torch.jit.script(model)
         traced_script_module.save(path)
 
+def export_arm_policy_as_jit(actor_critic, path):
+    if hasattr(actor_critic, 'estimator'):
+        # assumes LSTM: TODO add GRU
+        exporter = PolicyExporterHIM(actor_critic)
+        exporter.export(path)
+    else:
+        os.makedirs(path, exist_ok=True)
+        path = os.path.join(path, 'arm_policy_1.pt')
+        model = copy.deepcopy(actor_critic.inference_model).to('cpu')
+        traced_script_module = torch.jit.script(model)
+        traced_script_module.save(path)
+
 class PolicyExporterHIM(torch.nn.Module):
     def __init__(self, actor_critic):
         super().__init__()

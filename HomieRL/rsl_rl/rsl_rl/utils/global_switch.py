@@ -36,6 +36,8 @@ class GlobalSwitch():
     def set_reward_scales(self, hybrid_reward_scales, pretrained_reward_scales):
         self.hybrid_reward_scales = hybrid_reward_scales
         self.pretrained_reward_scales = pretrained_reward_scales
+        print("Hybrid reward scales:", self.hybrid_reward_scales)
+        print("Pretrained reward scales:", self.pretrained_reward_scales)
 
     # 获取奖励缩放因子的方法
     def get_reward_scales(self):
@@ -104,6 +106,8 @@ class GlobalSwitch():
     @property    
     def switch_open(self):
         return self.switch_flag
-    
+
+    def close_switch(self):
+        self.switch_flag = False
     
 global_switch = GlobalSwitch()
