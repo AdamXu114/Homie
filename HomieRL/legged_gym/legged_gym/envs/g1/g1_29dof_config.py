@@ -50,32 +50,33 @@ class G1RoughCfg(LeggedRobotCfg):
             terminal_body_pitch = 0.2
             terminal_body_pitch_roll = 80. / 180. * np.pi
             headupdown_thres = 0.1
-            manip_weight_lpy = 3
-            manip_weight_rpy = 1
+            manip_weight_lpy = 0.75
+            manip_weight_rpy = 0.25
             limit_body_roll = [-0.04, 0.04]
             limit_body_pitch = [-0.04, 0.04]
             limit_body_yaw = [-0.04, 0.04]
             orientation_tracking_sigma = 1.0
+            manip_tracking_sigma = 0.25
             height_command_limits = [0.65, 0.75]
             # TODO
         class reward_scales:
             # hip_joint_penality = -0.
-            arm_control_limits = -5.
-            arm_control_smoothness = -0.1
-            arm_energy = -0.00004
-            arm_dof_vel = -1e-4 * 10
-            arm_dof_acc = -2.5e-7 * 10
-            arm_action_rate = -0.01 * 10
+            # arm_control_limits = -5.
+            # arm_control_smoothness = -0.2
+            arm_energy = -0.004
+            # arm_dof_vel = -1e-2 * 10
+            # arm_dof_acc = -2.5e-4 * 10
+            # arm_action_rate = -0.01 * 10
             arm_action_smoothness_1 = -0.05 * 5
-            arm_action_smoothness_2 = -0.0
+            # arm_action_smoothness_2 = -0.0
 
 
-            arm_manip_commands_tracking_combine = 1.
-            vis_manip_commands_tracking_lpy = 0.
-            vis_manip_commands_tracking_rpy = 0.
-            orientation_tracking = -0.005
-            height_command_limits = -0.5
-            height_command_smoothness = -0.25
+            arm_manip_commands_tracking_combine = 2.
+            # vis_manip_commands_tracking_lpy = 0.
+            # vis_manip_commands_tracking_rpy = 0.
+            # orientation_tracking = -0.005
+            # height_command_limits = -0.5
+            # height_command_smoothness = -0.25
             # orientation_heuristic = -2.0
             # orientation_control = -10.
             # penalize_yaw = -0.5
@@ -100,12 +101,18 @@ class G1RoughCfg(LeggedRobotCfg):
             angle75 = np.deg2rad(75)
             angle60 = np.deg2rad(60)
             # TODO 待修改
-            l = [0.37, 0.39]        #default 0.38
-            p = [0.21, 0.23]       #经度default0.22
-            y = [0.41, 0.43]             #维度default0.42
-            roll_ee = [-0.01, 0.01]
-            pitch_ee = [-0.01, 0.01]
-            yaw_ee = [-0.01, 0.01]
+            # l = [0.40, 0.43]        #default 0.413
+            # p = [0.38, 0.42]       #经度default0.40
+            # y = [0.40, 0.44]             #维度default0.42
+            # roll_ee = [-0.03, 0.03]
+            # pitch_ee = [-0.03, 0.03]
+            # yaw_ee = [-0.03, 0.03]
+            l = [0.35, 0.48]        #default 0.413
+            p = [0.32, 0.48]       #经度default0.40
+            y = [0.35, 0.48]             #维度default0.42
+            roll_ee = [-0.1, 0.1]
+            pitch_ee = [-0.1, 0.1]
+            yaw_ee = [-0.1, 0.1]
             T_traj = [2, 3.]
             T_force_range = [1, 4.]
             add_force_thres = 0.3
@@ -114,12 +121,12 @@ class G1RoughCfg(LeggedRobotCfg):
             angle75 = np.deg2rad(75)
             angle60 = np.deg2rad(60)
             # TODO 待修改
-            l = [0.3, 0.77]         #default 0.1
-            p = [-0.01, 0.01]   #default 0？？？？
-            y = [-0.01, 0.01]        #default 0？？？？
-            roll_ee = [-0.01, 0.01]
-            pitch_ee = [-0.01, 0.01]
-            yaw_ee = [-0.01, 0.01]
+            l = [0.13, 0.17]         #default 0.15
+            p = [0.57, 0.61]   #default 0.59
+            y = [-0.03, 0.03]        #default 0
+            roll_ee = [-0.03, 0.03]
+            pitch_ee = [-0.03, 0.03]
+            yaw_ee = [-0.03, 0.03]
             T_traj = [2, 3.]
             T_force_range = [1, 4.]
             add_force_thres = 0.3
@@ -450,7 +457,7 @@ class G1RoughCfgPPO( LeggedRobotCfgPPO ):
         # 修改
         arm_policy_class_name = 'ArmActorCritic'
         arm_algorithm_class_name = 'ArmPPO'
-        save_interval = 200
+        save_interval = 100
         num_steps_per_env = 50
         max_iterations = 10000
         run_name = ''

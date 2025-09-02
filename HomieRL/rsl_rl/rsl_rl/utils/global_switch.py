@@ -12,7 +12,7 @@ class GlobalSwitch():
         self.pretrained_reward_scales = None
         
         self.pretrained_to_hybrid_start = 20
-        self.pretrained_to_hybrid_end = self.pretrained_to_hybrid_start + 20
+        self.pretrained_to_hybrid_end = self.pretrained_to_hybrid_start + 0
 
 
     # 初始化sigmoid学习率
@@ -41,31 +41,35 @@ class GlobalSwitch():
 
     # 获取奖励缩放因子的方法
     def get_reward_scales(self):
-        # 如果当前计数小于预训练到混合模式的开始计数
-        if self.count < self.pretrained_to_hybrid_start:
-            # 返回预训练模式的奖励缩放因子
+        if not self.switch_open:
             return self.pretrained_reward_scales
-
-        # 如果当前计数在预训练到混合模式的开始和结束计数之间
-        elif self.count < self.pretrained_to_hybrid_end:
-            # 初始化奖励缩放因子字典
-            reward_scales = {}
-            # 获取当前的学习率
-            lr = self.lr_down[self.count - self.pretrained_to_hybrid_start]
-            # 遍历混合模式的奖励缩放因子
-            for key, end in self.hybrid_reward_scales.items():
-                # 获取预训练模式的奖励缩放因子
-                start = self.pretrained_reward_scales[key]
-                # reward_scales[key] = start + (end - start) * (self.count - self.pretrained_to_hybrid_start) / (self.pretrained_to_hybrid_end - self.pretrained_to_hybrid_start)
-                reward_scales[key] = start * lr + end * (1 - lr)
-
-            # 返回当前的奖励缩放因子
-            return reward_scales
-
-        # 如果当前计数大于或等于预训练到混合模式的结束计数
         else:
-            # 返回混合模式的奖励缩放因子
             return self.hybrid_reward_scales
+        # # 如果当前计数小于预训练到混合模式的开始计数
+        # if self.count < self.pretrained_to_hybrid_start:
+        #     # 返回预训练模式的奖励缩放因子
+        #     return self.pretrained_reward_scales
+        #
+        # # 如果当前计数在预训练到混合模式的开始和结束计数之间
+        # elif self.count < self.pretrained_to_hybrid_end:
+        #     # 初始化奖励缩放因子字典
+        #     reward_scales = {}
+        #     # 获取当前的学习率
+        #     lr = self.lr_down[self.count - self.pretrained_to_hybrid_start]
+        #     # 遍历混合模式的奖励缩放因子
+        #     for key, end in self.hybrid_reward_scales.items():
+        #         # 获取预训练模式的奖励缩放因子
+        #         start = self.pretrained_reward_scales[key]
+        #         # reward_scales[key] = start + (end - start) * (self.count - self.pretrained_to_hybrid_start) / (self.pretrained_to_hybrid_end - self.pretrained_to_hybrid_start)
+        #         reward_scales[key] = start * lr + end * (1 - lr)
+        #
+        #     # 返回当前的奖励缩放因子
+        #     return reward_scales
+        #
+        # # 如果当前计数大于或等于预训练到混合模式的结束计数
+        # else:
+        #     # 返回混合模式的奖励缩放因子
+        #     return self.hybrid_reward_scales
 
 
     # def get_reward_scales(self):

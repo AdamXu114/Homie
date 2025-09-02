@@ -128,4 +128,4 @@ if __name__ == '__main__':
     MOVE_CAMERA = False
     args = get_args()
     global_switch.close_switch()
-    play(args, x_vel=0., y_vel=0., yaw_vel=0., height=0.64)
+    play(args, x_vel=0.5, y_vel=0., yaw_vel=0., height=0.64)

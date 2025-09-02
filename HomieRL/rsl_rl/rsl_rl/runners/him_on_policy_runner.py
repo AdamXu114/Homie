@@ -158,8 +158,10 @@ class HIMOnPolicyRunner:
 
         ep_infos = []
         rewbuffer = deque(maxlen=100)
+        rewbuffer_arm = deque(maxlen=100)
         lenbuffer = deque(maxlen=100)
         cur_reward_sum = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.device)
+        cur_arm_reward_sum = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.device)
         cur_episode_length = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.device)
 
         #修改
@@ -189,6 +191,7 @@ class HIMOnPolicyRunner:
 
                     actions = self.alg.act(obs, critic_obs)
                     # TODO
+                    #print("action arm",actions_arm[..., :-self.env.num_plan_actions])
                     actions = torch.cat((actions, actions_arm[..., :-self.env.num_plan_actions]), dim=-1)  # concat arm actions
                     obs, privileged_obs, rewards, rewards_arm, dones, infos, termination_ids, termination_privileged_obs = self.env.step(actions)
 
@@ -220,11 +223,14 @@ class HIMOnPolicyRunner:
                         if 'episode' in infos:
                             ep_infos.append(infos['episode'])
                         cur_reward_sum += rewards
+                        cur_arm_reward_sum += rewards_arm
                         cur_episode_length += 1
                         new_ids = (dones > 0).nonzero(as_tuple=False)
                         rewbuffer.extend(cur_reward_sum[new_ids][:, 0].cpu().numpy().tolist())
+                        rewbuffer_arm.extend(cur_arm_reward_sum[new_ids][:, 0].cpu().numpy().tolist())
                         lenbuffer.extend(cur_episode_length[new_ids][:, 0].cpu().numpy().tolist())
                         cur_reward_sum[new_ids] = 0
+                        cur_arm_reward_sum[new_ids] = 0
                         cur_episode_length[new_ids] = 0
 
                 stop = time.time()
@@ -239,8 +245,10 @@ class HIMOnPolicyRunner:
                 self.alg.compute_returns(critic_obs)
 
             #TODO
-            if global_switch.switch_open:
-                mean_value_loss_arm, mean_surrogate_loss_arm, mean_adaptation_module_loss_arm, mean_decoder_loss, mean_decoder_loss_student, mean_adaptation_module_test_loss, mean_decoder_test_loss, mean_decoder_test_loss_student = self.arm_alg.update(
+            if global_switch.switch_open: # it<1500,没有update
+                (mean_value_loss_arm, mean_surrogate_loss_arm, mean_adaptation_module_loss_arm,
+                 mean_decoder_loss, mean_decoder_loss_student, mean_adaptation_module_test_loss,
+                 mean_decoder_test_loss, mean_decoder_test_loss_student) = self.arm_alg.update(
                     un_adapt=False)
 
             mean_value_loss, mean_surrogate_loss, mean_estimation_loss, mean_swap_loss, mean_actor_sym_loss, mean_critic_sym_loss = self.alg.update()
@@ -305,6 +313,7 @@ class HIMOnPolicyRunner:
         self.writer.add_scalar('Perf/learning_time', locs['learn_time'], locs['it'])
         if len(locs['rewbuffer']) > 0:
             self.writer.add_scalar('Train/mean_reward', statistics.mean(locs['rewbuffer']), locs['it'])
+            self.writer.add_scalar('Train/arm_mean_reward', statistics.mean(locs['rewbuffer_arm']), locs['it'])
             self.writer.add_scalar('Train/mean_episode_length', statistics.mean(locs['lenbuffer']), locs['it'])
             if self.logger_type != "wandb":  # wandb does not support non-integer x-axis logging
                 self.writer.add_scalar('Train/mean_reward/time', statistics.mean(locs['rewbuffer']), self.tot_time)
@@ -325,6 +334,7 @@ class HIMOnPolicyRunner:
                           f"""{'Mean critic sym loss:':>{pad}} {locs['mean_critic_sym_loss']:.4f}\n"""
                           f"""{'Mean action noise std:':>{pad}} {mean_std.item():.2f}\n"""
                           f"""{'Mean reward:':>{pad}} {statistics.mean(locs['rewbuffer']):.2f}\n"""
+                          f"""{'Mean reward_arm:':>{pad}} {statistics.mean(locs['rewbuffer_arm']):.2f}\n"""
                           f"""{'Mean episode length:':>{pad}} {statistics.mean(locs['lenbuffer']):.2f}\n""")
                         #   f"""{'Mean reward/step:':>{pad}} {locs['mean_reward']:.2f}\n"""
                         #   f"""{'Mean episode length/episode:':>{pad}} {locs['mean_trajectory_length']:.2f}\n""")

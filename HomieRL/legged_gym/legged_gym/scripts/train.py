@@ -43,7 +43,7 @@ def train(args, headless=False):
     # args.resume = True
 
     # 修改2000为20
-    global_switch.pretrained_to_hybrid_start = 1500 if args.resume else 10000  # 2000 with pretrained, 10000 from scratch
+    global_switch.pretrained_to_hybrid_start = 1401 if args.resume else 2000  # 2000 with pretrained, 10000 from scratch
     global_switch.pretrained_to_hybrid_end = global_switch.pretrained_to_hybrid_start + 1000
     global_switch.init_sigmoid_lr()
     env, env_cfg = task_registry.make_env(name=args.task, args=args)
